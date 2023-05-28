@@ -1,0 +1,112 @@
+source: matches is table('duckdb:matches.csv') {
+  measure: mcount is count()
+  measure: won_toss_won_match is mcount {where: toss_winner=winner} 
+  measure: won_toss_won_match_perc is won_toss_won_match/mcount
+  measure: bat_first_won_match is mcount {where: toss_decision = 'bat' and toss_winner=winner}
+  measure: field_first_won_match is mcount {where: toss_decision = 'field' and toss_winner=winner}
+  measure: no_result_tied is mcount {where: result ? 'tie' | 'no result'}
+}
+
+query: win_by_runs_bar_chart is matches -> {
+    group_by: win_by_runs
+    aggregate: mcount
+    order_by: mcount desc
+    where: win_by_runs != 0
+}
+
+query: season_bar_chart is matches -> {
+    group_by: season_year is (concat(season::string,'-01-01')::date).year
+    aggregate: mcount
+}
+
+query: season_bar_chart is matches -> {
+    group_by: season
+    aggregate: mcount
+}
+query: city_bar_chart is matches -> {
+    group_by: city
+    aggregate: mcount
+}
+
+query: venue_bar_chart is matches -> {
+    group_by: venue
+    aggregate: mcount
+}
+
+query: mom_bar_chart is matches -> {
+    group_by: player_of_match
+    aggregate: mcount
+    order_by: mcount desc
+    top: 10
+}
+
+query: season_winbyruns_scatter_chart is matches -> {
+    group_by: win_by_runs
+    group_by: season
+    aggregate: mcount
+    where: season > 2000 and season < 2020
+}
+
+query: winner_bar_chart is matches -> {
+    group_by: winner
+    aggregate: mcount
+}
+
+query: won_toss_won_match_analysis is matches -> {
+    group_by: winner
+    aggregate:
+     mcount
+     won_toss_won_match
+     perc is won_toss_won_match/mcount
+    order_by: perc desc
+    where: mcount > 10 
+}
+
+query: won_toss_won_match_analysis is matches -> {
+    group_by: winner
+    aggregate: won_toss_won_match_perc
+    order_by: won_toss_won_match_perc desc
+    where: mcount > 10 
+}
+
+query: matches -> {
+    group_by: season
+    nest: by_winner is {
+        group_by: winner
+        aggregate: 
+            mcount
+            won_toss_won_match
+            won_toss_won_match_perc
+    }
+}
+
+query: matches -> {
+    group_by: season
+    aggregate: won_toss_won_match_perc
+    order_by: season asc
+}
+
+
+query: bat_first_win_match is matches -> {
+    group_by: season
+    aggregate: 
+     mcount
+     bat_first_won_match
+     field_first_won_match
+     won_toss_won_match
+     no_result_tied
+    order_by: season asc
+}
+
+query: matches -> {
+    group_by: season
+    nest: by_winner is {
+    group_by: winner
+    aggregate: 
+     mcount
+     bat_first_won_match
+     field_first_won_match
+     won_toss_won_match
+     no_result_tied
+    }
+}
